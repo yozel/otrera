@@ -13,18 +13,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/yozel/otrera/gatherer/aws"
-	"github.com/yozel/otrera/types"
 )
 
 // Gatherer is an struct to gather Description
 type Gatherer struct {
 	cachePath   string
-	descriptors map[string]func(options map[string]string) (*types.Description, error)
+	descriptors map[string]func(options map[string]string) ([]RawObjectInterface, error)
 }
 
-func (g *Gatherer) getCachePath(name string, options map[string]string) string {
+func (g *Gatherer) getCachePath(cacheKey string, options map[string]string) string {
 	keys := make([]string, 0, len(options))
 	for k := range options {
 		keys = append(keys, k)
@@ -40,12 +37,16 @@ func (g *Gatherer) getCachePath(name string, options map[string]string) string {
 		}
 	}
 
-	key := fmt.Sprintf("%s-%s", name, fmt.Sprintf("%x", h.Sum(nil)))
+	key := fmt.Sprintf("%s-%s", strings.Replace(cacheKey, "/", ".", -1), fmt.Sprintf("%x", h.Sum(nil)))
 	return path.Join(g.cachePath, key)
 }
 
-func (g *Gatherer) setCache(cacheFilePath string, desc *types.Description, ttl time.Duration) error {
-	b, err := json.Marshal(desc)
+func (g *Gatherer) setCache(cacheFilePath string, objects []RawObjectInterface, ttl time.Duration) error {
+	rawObjects := []RawObject{}
+	for _, obj := range objects {
+		rawObjects = append(rawObjects, obj.Copy())
+	}
+	b, err := json.Marshal(rawObjects)
 	if err != nil {
 		return err // TODO: wrap error
 	}
@@ -56,11 +57,14 @@ func (g *Gatherer) setCache(cacheFilePath string, desc *types.Description, ttl t
 	return nil
 }
 
-func (g *Gatherer) getCache(cacheFilePath string) (*types.Description, error) {
+func (g *Gatherer) getCache(cacheFilePath string) ([]RawObject, error) {
 
 	files, err := filepath.Glob(fmt.Sprintf("%s-*", cacheFilePath))
 	if err != nil {
 		return nil, err // TODO: wrap error
+	}
+	if len(files) == 0 {
+		return nil, nil
 	}
 	sort.Strings(files)
 	cacheFilePath = files[len(files)-1]
@@ -84,17 +88,17 @@ func (g *Gatherer) getCache(cacheFilePath string) (*types.Description, error) {
 		return nil, err // TODO: wrap error
 	}
 
-	var desc types.Description
-	err = json.Unmarshal(b, &desc)
+	var d []RawObject
+	err = json.Unmarshal(b, &d)
 	if err != nil {
 		return nil, err // TODO: wrap error
 	}
-	return &desc, nil
+	return d, nil
 }
 
 // Gather returns Description for given name and options with cache
-func (g *Gatherer) Gather(name string, options map[string]string, ttl time.Duration) (*types.Description, error) {
-	cp := g.getCachePath(name, options)
+func (g *Gatherer) Gather(key string, options map[string]string, ttl time.Duration) ([]RawObject, error) {
+	cp := g.getCachePath(key, options)
 	r, err := g.getCache(cp)
 	if err != nil {
 		return nil, err // TODO: wrap error
@@ -103,11 +107,11 @@ func (g *Gatherer) Gather(name string, options map[string]string, ttl time.Durat
 		return r, nil
 	}
 
-	r, err = g.descriptors[name](options)
+	r2, err := g.descriptors[key](options)
 	if err != nil {
 		return nil, err // TODO: wrap error
 	}
-	err = g.setCache(cp, r, ttl)
+	err = g.setCache(cp, r2, ttl)
 	if err != nil {
 		return nil, err // TODO: wrap error
 	}
@@ -115,12 +119,10 @@ func (g *Gatherer) Gather(name string, options map[string]string, ttl time.Durat
 }
 
 // New creates a new Gatherer
-func New(cachePath string) *Gatherer {
+func New(cachePath string, descriptors map[string]func(options map[string]string) ([]RawObjectInterface, error)) *Gatherer {
 	g := &Gatherer{
-		cachePath: cachePath,
-		descriptors: map[string]func(options map[string]string) (*types.Description, error){
-			"EC2Instances": aws.DescribeEC2Instances,
-		},
+		cachePath:   cachePath,
+		descriptors: descriptors,
 	}
 	return g
 }

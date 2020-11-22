@@ -1,7 +1,6 @@
 package aws
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 
@@ -9,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/pkg/errors"
-	"github.com/yozel/otrera/types"
+	"github.com/yozel/otrera/gatherer"
 	"gopkg.in/ini.v1"
 )
 
@@ -78,7 +77,23 @@ func getInstanceDetails(profile, region string) ([]*ec2.Instance, error) {
 	return r, nil
 }
 
-func DescribeEC2Instances(options map[string]string) (*types.Description, error) {
+type EC2InstanceObject struct {
+	ec2instance *ec2.Instance
+}
+
+func (e *EC2InstanceObject) Name() string {
+	return *e.ec2instance.InstanceId
+}
+
+func (e *EC2InstanceObject) Content() interface{} {
+	return *e.ec2instance
+}
+
+func (e *EC2InstanceObject) Copy() gatherer.RawObject {
+	return gatherer.RawObject{IName: e.Name(), IContent: e.Content()}
+}
+
+func DescribeEC2Instances(options map[string]string) ([]gatherer.RawObjectInterface, error) {
 	profile := options["profile"]
 	region := options["region"]
 	instances, err := getInstanceDetails(profile, region)
@@ -86,36 +101,9 @@ func DescribeEC2Instances(options map[string]string) (*types.Description, error)
 	if err != nil {
 		return nil, err
 	}
-
-	j, err := json.Marshal(instances)
-	err = errors.Wrapf(err, fmt.Sprintf("Can't Marshal []*ec2.Instance for %s %s", profile, region))
-	if err != nil {
-		return nil, err
+	result := []gatherer.RawObjectInterface{}
+	for _, instance := range instances {
+		result = append(result, &EC2InstanceObject{instance})
 	}
-
-	var result interface{}
-	json.Unmarshal([]byte(j), &result)
-
-	return &types.Description{
-		Labels: map[string]string{"profile": profile, "region": region},
-		Data:   result,
-	}, nil
-
-	// return string(j), nil
-
-	// var result interface{}
-	// json.Unmarshal([]byte(j), &result)
-	// return &result
-
-	// err = ioutil.WriteFile("/tmp/dat1", j, 0644)
-	// if err != nil {
-	// 	log.Printf("%s\n", err)
-	// 	return ""
-	// }
-
-	// js, err := ioutil.ReadFile("/tmp/dat1")
-	// if err != nil {
-	// 	log.Printf("%s\n", err)
-	// 	return ""
-	// }
+	return result, nil
 }
