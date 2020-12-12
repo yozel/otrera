@@ -19,9 +19,10 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/yozel/otrera/log"
 
 	"github.com/yozel/otrera/template"
 
@@ -32,14 +33,36 @@ import (
 )
 
 var (
-	flagTemplatePath string
+	flagTemplatePath    string
+	flagPrependFilePath string
+	flagAppendFilePath  string
 )
 
 // renderCmd represents the render command
 var renderCmd = &cobra.Command{
 	Use:   "render",
 	Short: "Render a template with AWS data",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: handleErrors(func(cmd *cobra.Command, args []string) error {
+		logger := log.Log().With().Logger()
+		loggerDebug := log.Log().With().
+			Str("cobra cmd", "render").
+			Str("flagPrependFilePath", flagPrependFilePath).
+			Str("flagAppendFilePath", flagAppendFilePath).Logger()
+		var err error
+		prependFileContent := make([]byte, 0)
+		if flagPrependFilePath != "" {
+			if prependFileContent, err = ioutil.ReadFile(flagPrependFilePath); err != nil {
+				return err // TODO: wrap error
+			}
+		}
+
+		appendFileContent := make([]byte, 0)
+		if flagAppendFilePath != "" {
+			if appendFileContent, err = ioutil.ReadFile(flagAppendFilePath); err != nil {
+				return err // TODO: wrap error
+			}
+		}
+
 		configFile := "/Users/yasin.ozel/.aws/config"
 		profiles, err := aws.ListProfiles(configFile)
 		if err != nil {
@@ -56,14 +79,16 @@ var renderCmd = &cobra.Command{
 		for _, profile := range profiles {
 			go func(profile string) {
 				defer wg.Done()
-				log.Printf("Processing profile %s\n", profile)
+				logger.Info().Str("profile", profile).Msg("Processing profile")
+				loggerDebug.Debug().Str("profile", profile).Msg("Processing profile")
 				options := map[string]string{"profile": profile, "region": "eu-west-1"}
 				labels := map[string]string{"profile": profile, "region": "eu-west-1"}
 				err = s.Gather("AWS/EC2Instances", options, labels, 10*time.Minute)
 				if err != nil {
 					panic(err)
 				}
-				log.Printf("Done processing profile %s\n", profile)
+				logger.Info().Str("profile", profile).Msg("Done processing profile")
+				loggerDebug.Debug().Str("profile", profile).Msg("Done processing profile")
 			}(profile)
 		}
 		wg.Wait()
@@ -78,18 +103,20 @@ var renderCmd = &cobra.Command{
 
 		var b bytes.Buffer
 		err = template.Execute(&b, map[string]interface{}{})
-		err = errors.Wrapf(err, "Can't execute template")
 		if err != nil {
-			log.Println(err)
+			logger.Fatal().Err(err).Msg("Can't execute template")
 		}
 
-		fmt.Printf("%s", b.String())
-	},
+		fmt.Printf("%s\n%s\n%s", prependFileContent, b.String(), appendFileContent)
+		return nil
+	}),
 }
 
 func init() {
 	rootCmd.AddCommand(renderCmd)
 	renderCmd.PersistentFlags().StringVarP(&flagTemplatePath, "template", "t", "", "Template to render")
+	renderCmd.PersistentFlags().StringVar(&flagPrependFilePath, "prepend-file", "", "File to prepend before rendered file")
+	renderCmd.PersistentFlags().StringVar(&flagAppendFilePath, "append-file", "", "File to append after renderes file")
 	renderCmd.MarkPersistentFlagRequired("template")
 	renderCmd.MarkPersistentFlagFilename("template")
 }

@@ -19,6 +19,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/yozel/otrera/log"
+
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 )
 
@@ -48,6 +51,10 @@ func Execute() {
 	}
 }
 
+var (
+	debug bool
+)
+
 func init() {
 	cobra.OnInitialize(initConfig)
 
@@ -59,11 +66,17 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Print debug level logs")
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	if debug {
+		log.SetLevel(zerolog.DebugLevel)
+	} else {
+		log.SetLevel(zerolog.InfoLevel)
+	}
+
 	// if cfgFile != "" {
 	// 	// Use config file from the flag.
 	// 	viper.SetConfigFile(cfgFile)

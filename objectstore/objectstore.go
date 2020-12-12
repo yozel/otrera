@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/yozel/otrera/gatherer"
@@ -12,8 +13,9 @@ import (
 )
 
 type ObjectStore struct {
-	store    map[string]Object
-	gatherer *gatherer.Gatherer
+	store     map[string]Object
+	storeLock sync.RWMutex
+	gatherer  *gatherer.Gatherer
 }
 
 func NewObjectStore() (*ObjectStore, error) {
@@ -28,10 +30,13 @@ func NewObjectStore() (*ObjectStore, error) {
 			map[string]func(options map[string]string) ([]gatherer.RawObjectInterface, error){
 				"AWS/EC2Instances": aws.DescribeEC2Instances,
 			}), // TODO: get this from parameter
+		storeLock: sync.RWMutex{},
 	}, nil
 }
 
 func (s *ObjectStore) Keys() []string {
+	s.storeLock.RLock()
+	defer s.storeLock.RUnlock()
 	keys := make([]string, 0, len(s.store))
 	for k := range s.store {
 		keys = append(keys, k)
@@ -48,11 +53,15 @@ func (s *ObjectStore) Set(key string, l map[string]string, c time.Time, d interf
 	if err != nil {
 		return err // TODO: wrap error
 	}
+	s.storeLock.Lock()
+	defer s.storeLock.Unlock()
 	s.store[key] = Object{Key: key, Labels: l, CreationTimestamp: c, Data: *r}
 	return nil
 }
 
 func (s *ObjectStore) Get(key string) (Object, error) {
+	s.storeLock.RLock()
+	defer s.storeLock.RUnlock()
 	return s.store[key], nil
 }
 
@@ -74,6 +83,9 @@ func (s *ObjectStore) GetAll(key string, l map[string]string) ([]Object, error) 
 	if err != nil {
 		return nil, err
 	}
+
+	s.storeLock.RLock()
+	defer s.storeLock.RUnlock()
 
 eachobject:
 	for k, v := range s.store {
