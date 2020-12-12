@@ -2,6 +2,7 @@ package objectstore
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -16,6 +17,10 @@ type ObjectStore struct {
 }
 
 func NewObjectStore() (*ObjectStore, error) {
+	err := os.MkdirAll("/tmp/.otrera.cache", 0755)
+	if err != nil {
+		return nil, err // TODO: wrap error
+	}
 	return &ObjectStore{
 		store: make(map[string]Object),
 		gatherer: gatherer.New(

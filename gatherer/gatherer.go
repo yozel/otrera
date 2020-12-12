@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
 	"path"
@@ -96,6 +97,19 @@ func (g *Gatherer) getCache(cacheFilePath string) ([]RawObject, error) {
 	return d, nil
 }
 
+func (g *Gatherer) UpdateCache(key string, options map[string]string, ttl time.Duration) error {
+	cp := g.getCachePath(key, options)
+	r, err := g.descriptors[key](options)
+	if err != nil {
+		return err // TODO: wrap error
+	}
+	err = g.setCache(cp, r, ttl)
+	if err != nil {
+		return err // TODO: wrap error
+	}
+	return nil
+}
+
 // Gather returns Description for given name and options with cache
 func (g *Gatherer) Gather(key string, options map[string]string, ttl time.Duration) ([]RawObject, error) {
 	cp := g.getCachePath(key, options)
@@ -103,17 +117,19 @@ func (g *Gatherer) Gather(key string, options map[string]string, ttl time.Durati
 	if err != nil {
 		return nil, err // TODO: wrap error
 	}
-	if r != nil {
-		return r, nil
+	if r == nil {
+		err = g.UpdateCache(key, options, ttl)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
-	r2, err := g.descriptors[key](options)
+	r, err = g.getCache(cp)
 	if err != nil {
 		return nil, err // TODO: wrap error
 	}
-	err = g.setCache(cp, r2, ttl)
-	if err != nil {
-		return nil, err // TODO: wrap error
+	if r == nil {
+		log.Fatalf("Something wrong, cache is still empty after UpdateCache")
 	}
 	return r, nil
 }
