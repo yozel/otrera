@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/pkg/errors"
-	"github.com/yozel/otrera/gatherer"
+	"github.com/yozel/otrera/internal/gatherer"
 	"gopkg.in/ini.v1"
 )
 

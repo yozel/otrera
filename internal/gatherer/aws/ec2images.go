@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
-	"github.com/yozel/otrera/gatherer"
+	"github.com/yozel/otrera/internal/gatherer"
 )
 
 type EC2ImageObject struct {

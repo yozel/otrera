@@ -9,7 +9,7 @@ import (
 	"text/template"
 
 	"github.com/tidwall/gjson"
-	"github.com/yozel/otrera/objectstore"
+	"github.com/yozel/otrera/internal/objectstore"
 )
 
 var funcMap map[string]interface{} = template.FuncMap{

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/yozel/otrera/log"
+	"github.com/yozel/otrera/internal/log"
 
 	"github.com/spf13/cobra"
 )

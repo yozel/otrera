@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/yozel/otrera/gatherer/aws"
-	"github.com/yozel/otrera/log"
-	"github.com/yozel/otrera/objectstore"
-	"github.com/yozel/otrera/template"
+	"github.com/yozel/otrera/internal/gatherer/aws"
+	"github.com/yozel/otrera/internal/log"
+	"github.com/yozel/otrera/internal/objectstore"
+	"github.com/yozel/otrera/internal/template"
 )
 
 func renderGoTemplate(tmpl string) (string, error) {

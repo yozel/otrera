@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yozel/otrera/gatherer"
-	"github.com/yozel/otrera/gatherer/aws"
+	"github.com/yozel/otrera/internal/gatherer"
+	"github.com/yozel/otrera/internal/gatherer/aws"
 )
 
 type ObjectStore struct {

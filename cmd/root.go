@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/yozel/otrera/log"
+	"github.com/yozel/otrera/internal/log"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
