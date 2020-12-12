@@ -2,6 +2,7 @@ package update
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -19,9 +20,12 @@ func init() {
 }
 
 func Update() error {
-	var err error
+	h, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
 
-	configFile := "/Users/yasin.ozel/.aws/config"
+	configFile := h + "/.aws/config"
 	profiles, err := aws.ListProfiles(configFile)
 	if err != nil {
 		return err

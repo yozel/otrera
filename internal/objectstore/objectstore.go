@@ -3,6 +3,7 @@ package objectstore
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -33,14 +34,22 @@ type ObjectStore struct {
 }
 
 func NewObjectStore() (*ObjectStore, error) {
-	err := os.MkdirAll("/tmp/.otrera", 0755)
+	h, err := os.UserHomeDir()
 	if err != nil {
-		return nil, err // TODO: wrap error
+		return nil, err
 	}
 
-	db, err := sql.Open("sqlite3", "file:/tmp/.otrera/objectstore.db?cache=shared&mode=rwc")
+	otretaPath := fmt.Sprintf("%s/.otrera", h)
+	objectstorePath := fmt.Sprintf("%s/objectstore.db", otretaPath)
+
+	err = os.MkdirAll(otretaPath, 0755)
 	if err != nil {
-		return nil, err // TODO: wrap error
+		return nil, err
+	}
+
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc", objectstorePath))
+	if err != nil {
+		return nil, err
 	}
 	db.SetMaxOpenConns(1)
 
