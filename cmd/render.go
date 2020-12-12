@@ -16,20 +16,9 @@ limitations under the License.
 package cmd
 
 import (
-	"bytes"
-	"fmt"
-	"io/ioutil"
-	"sync"
-	"time"
+	"github.com/yozel/otrera/internal/renderer"
 
-	"github.com/yozel/otrera/log"
-
-	"github.com/yozel/otrera/template"
-
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/yozel/otrera/gatherer/aws"
-	"github.com/yozel/otrera/objectstore"
 )
 
 var (
@@ -43,75 +32,28 @@ var renderCmd = &cobra.Command{
 	Use:   "render",
 	Short: "Render a template with AWS data",
 	Run: handleErrors(func(cmd *cobra.Command, args []string) error {
-		logger := log.Log().With().Logger()
-		loggerDebug := log.Log().With().
-			Str("cobra cmd", "render").
-			Str("flagPrependFilePath", flagPrependFilePath).
-			Str("flagAppendFilePath", flagAppendFilePath).Logger()
-		var err error
-		prependFileContent := make([]byte, 0)
+		// logger := log.Log().With().Logger()
+		// loggerDebug := log.Log().With().
+		// 	Str("cobra cmd", "render").
+		// 	Str("flagPrependFilePath", flagPrependFilePath).
+		// 	Str("flagAppendFilePath", flagAppendFilePath).Logger()
+
 		if flagPrependFilePath != "" {
-			if prependFileContent, err = ioutil.ReadFile(flagPrependFilePath); err != nil {
-				return err // TODO: wrap error
+			if err := renderer.NewRenderableWithPath(renderer.Text, flagPrependFilePath).Render(); err != nil {
+				return err
 			}
 		}
 
-		appendFileContent := make([]byte, 0)
-		if flagAppendFilePath != "" {
-			if appendFileContent, err = ioutil.ReadFile(flagAppendFilePath); err != nil {
-				return err // TODO: wrap error
-			}
-		}
-
-		configFile := "/Users/yasin.ozel/.aws/config"
-		profiles, err := aws.ListProfiles(configFile)
-		if err != nil {
-			panic(err)
-		}
-
-		s, err := objectstore.NewObjectStore()
-		if err != nil {
-			panic(err)
-		}
-
-		var wg sync.WaitGroup
-		wg.Add(len(profiles))
-		for _, profile := range profiles {
-			go func(profile string) {
-				defer wg.Done()
-				logger.Info().Str("profile", profile).Msg("Processing profile")
-				loggerDebug.Debug().Str("profile", profile).Msg("Processing profile")
-				options := map[string]string{"profile": profile, "region": "eu-west-1"}
-				labels := map[string]string{"profile": profile, "region": "eu-west-1"}
-				err = s.Gather("AWS/EC2Instances", options, labels, 10*time.Minute)
-				if err != nil {
-					panic(err)
-				}
-				err = s.Gather("AWS/EC2Images", options, labels, 10*time.Minute)
-				if err != nil {
-					panic(err)
-				}
-				logger.Info().Str("profile", profile).Msg("Done processing profile")
-				loggerDebug.Debug().Str("profile", profile).Msg("Done processing profile")
-			}(profile)
-		}
-		wg.Wait()
-
-		hostTemplateString, err := ioutil.ReadFile(flagTemplatePath)
-
-		template, err := template.New("hostTemplateString", string(hostTemplateString), s)
-		err = errors.Wrapf(err, "Can't parse hostTemplateString")
-		if err != nil {
+		if err := renderer.NewRenderableWithPath(renderer.GoTemplate, flagTemplatePath).Render(); err != nil {
 			return err
 		}
 
-		var b bytes.Buffer
-		err = template.Execute(&b, map[string]interface{}{})
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Can't execute template")
+		if flagAppendFilePath != "" {
+			if err := renderer.NewRenderableWithPath(renderer.Text, flagAppendFilePath).Render(); err != nil {
+				return err
+			}
 		}
 
-		fmt.Printf("%s\n%s\n%s", prependFileContent, b.String(), appendFileContent)
 		return nil
 	}),
 }
