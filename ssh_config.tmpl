@@ -1,5 +1,5 @@
 #### START OF THE TEMPLATE ####
-{{- range $instance := getall "AWS/EC2Instances/*" -}}
+{{- range $instance := getall "AWS/EC2Instances/" -}}
 {{ $User := (get "AWS/EC2Images/" $instance.Data.ImageId) | gjson "Data.Tags.#(Key==\"SSHUser\").Value" }}
 {{ $InstanceName := $instance.Data.Tags | gjson "#(Key==\"Name\").Value" }}
 {{ $IpAddress := or $instance.Data.PrivateIpAddress $instance.Data.PublicIpAddress }}

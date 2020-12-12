@@ -1,136 +1,26 @@
 package gatherer
 
-import (
-	"crypto/sha256"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"net/url"
-	"os"
-	"path"
-	"path/filepath"
-	"sort"
-	"strings"
-	"time"
-)
-
 // Gatherer is an struct to gather Description
 type Gatherer struct {
-	cachePath   string
 	descriptors map[string]func(options map[string]string) ([]RawObjectInterface, error)
 }
 
-func (g *Gatherer) getCachePath(cacheKey string, options map[string]string) string {
-	keys := make([]string, 0, len(options))
-	for k := range options {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	h := sha256.New()
-	for _, k := range keys {
-		k = url.QueryEscape(k)
-		v := url.QueryEscape(options[k])
-		_, err := h.Write([]byte(fmt.Sprintf("%s:%s;", k, v)))
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	key := fmt.Sprintf("%s-%s", strings.Replace(cacheKey, "/", ".", -1), fmt.Sprintf("%x", h.Sum(nil)))
-	return path.Join(g.cachePath, key)
-}
-
-func (g *Gatherer) setCache(cacheFilePath string, objects []RawObjectInterface) error {
-	rawObjects := []RawObject{}
-	for _, obj := range objects {
-		rawObjects = append(rawObjects, obj.Copy())
-	}
-	b, err := json.Marshal(rawObjects)
-	if err != nil {
-		return err // TODO: wrap error
-	}
-	err = ioutil.WriteFile(fmt.Sprintf("%s-%d", cacheFilePath, time.Now().Unix()), b, 0644)
-	if err != nil {
-		return err // TODO: wrap error
-	}
-	return nil
-}
-
-func (g *Gatherer) getCache(cacheFilePath string) ([]RawObject, error) {
-
-	files, err := filepath.Glob(fmt.Sprintf("%s-*", cacheFilePath))
-	if err != nil {
-		return nil, err // TODO: wrap error
-	}
-	if len(files) == 0 {
-		return nil, nil
-	}
-	sort.Strings(files)
-	cacheFilePath = files[len(files)-1]
-
-	b, err := ioutil.ReadFile(cacheFilePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err // TODO: wrap error
-	}
-
-	var d []RawObject
-	err = json.Unmarshal(b, &d)
-	if err != nil {
-		return nil, err // TODO: wrap error
-	}
-	return d, nil
-}
-
-func (g *Gatherer) UpdateCache(key string, options map[string]string) error {
-	cp := g.getCachePath(key, options)
+// Gather returns Description for given name and options
+func (g *Gatherer) Gather(key string, options map[string]string) ([]RawObject, error) {
 	r, err := g.descriptors[key](options)
 	if err != nil {
-		return err // TODO: wrap error
-	}
-	err = g.setCache(cp, r)
-	if err != nil {
-		return err // TODO: wrap error
-	}
-	return nil
-}
-
-// Gather returns Description for given name and options with cache
-func (g *Gatherer) Gather(key string, options map[string]string) ([]RawObject, error) {
-	cp := g.getCachePath(key, options)
-	r, err := g.getCache(cp)
-	if err != nil {
 		return nil, err // TODO: wrap error
 	}
-	if r == nil {
-		err = g.UpdateCache(key, options)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 
-	r, err = g.getCache(cp)
-	if err != nil {
-		return nil, err // TODO: wrap error
+	result := make([]RawObject, len(r))
+	for i, obj := range r {
+		result[i] = obj.Copy()
 	}
-	if r == nil {
-		log.Fatalf("Something wrong, cache is still empty after UpdateCache")
-	}
-	return r, nil
+	return result, nil
 }
 
 // New creates a new Gatherer
-func New(cachePath string, descriptors map[string]func(options map[string]string) ([]RawObjectInterface, error)) (*Gatherer, error) {
-	err := os.MkdirAll(cachePath, 0755)
-	if err != nil {
-		return nil, err // TODO: wrap error
-	}
-	g := &Gatherer{
-		cachePath:   cachePath,
-		descriptors: descriptors,
-	}
-	return g, nil
+func New(descriptors map[string]func(options map[string]string) ([]RawObjectInterface, error)) *Gatherer {
+	g := &Gatherer{descriptors: descriptors}
+	return g
 }

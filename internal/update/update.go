@@ -35,18 +35,17 @@ func Update() error {
 			options := map[string]string{"profile": profile, "region": "eu-west-1"}
 			labels := map[string]string{"profile": profile, "region": "eu-west-1"}
 
-			g, err := gatherer.New(
-				"/tmp/.otrera.cache",
-				map[string]func(options map[string]string) ([]gatherer.RawObjectInterface, error){
-					"AWS/EC2Instances": aws.DescribeEC2Instances,
-					"AWS/EC2Images":    aws.DescribeEC2Images,
-				})
+			g := gatherer.New(map[string]func(options map[string]string) ([]gatherer.RawObjectInterface, error){
+				"AWS/EC2Instances": aws.DescribeEC2Instances,
+				"AWS/EC2Images":    aws.DescribeEC2Images,
+			})
+
+			err = s.Clear()
 			if err != nil {
 				panic(err)
 			}
 
 			populateObjectStore := func(key string, o map[string]string, l map[string]string) error {
-				g.UpdateCache(key, o)
 				c, err := g.Gather(key, o)
 				if err != nil {
 					return err // TODO: wrap error
