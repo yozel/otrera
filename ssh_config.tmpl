@@ -1,0 +1,12 @@
+#### START OF THE TEMPLATE ####
+{{ range $object := getall "AWS/EC2Instances/*" }}
+{{- with $object.Data }}
+{{- if .PrivateIpAddress }}
+Host {{ $object.Labels.profile }}_{{ .Tags | gjson "#(Key==\"Name\").Value" }}_{{ .PrivateIpAddress | replace "." "-" }}
+	Hostname {{ .PrivateIpAddress }}
+	{{ if .KeyName }}IdentityFile ~/.ssh/subdir/{{ .KeyName }}.pem{{ end }}
+	# ImageId: {{ .ImageId }}
+{{ end -}}
+{{ end -}}
+{{ end }}
+#### END OF THE TEMPLATE ####
