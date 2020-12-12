@@ -10,7 +10,7 @@ import (
 var log *zerolog.Logger
 
 func init() {
-	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
+	output := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}
 	logger := zerolog.New(output).With().Timestamp().Logger()
 	log = &logger
 }
