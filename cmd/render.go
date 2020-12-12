@@ -123,4 +123,6 @@ func init() {
 	renderCmd.PersistentFlags().StringVar(&flagAppendFilePath, "append-file", "", "File to append after renderes file")
 	renderCmd.MarkPersistentFlagRequired("template")
 	renderCmd.MarkPersistentFlagFilename("template")
+	renderCmd.MarkPersistentFlagFilename("prepend-file")
+	renderCmd.MarkPersistentFlagFilename("append-file")
 }
