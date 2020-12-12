@@ -1,20 +1,17 @@
-package renderer
+package update
 
 import (
-	"bytes"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/yozel/otrera/internal/gatherer"
 	"github.com/yozel/otrera/internal/gatherer/aws"
 	"github.com/yozel/otrera/internal/log"
 	"github.com/yozel/otrera/internal/objectstore"
-	"github.com/yozel/otrera/internal/template"
 )
 
-func renderGoTemplate(tmpl string) (string, error) {
+func Update() error {
 	logger := log.Log().With().Logger()
 	var err error
 
@@ -49,6 +46,7 @@ func renderGoTemplate(tmpl string) (string, error) {
 			}
 
 			populateObjectStore := func(key string, o map[string]string, l map[string]string) error {
+				g.UpdateCache(key, o)
 				c, err := g.Gather(key, o)
 				if err != nil {
 					return err // TODO: wrap error
@@ -75,18 +73,5 @@ func renderGoTemplate(tmpl string) (string, error) {
 		}(profile)
 	}
 	wg.Wait()
-
-	template, err := template.New("hostTemplateString", string(tmpl), s)
-	err = errors.Wrapf(err, "Can't parse hostTemplateString")
-	if err != nil {
-		return "nil", err
-	}
-
-	var b bytes.Buffer
-	err = template.Execute(&b, map[string]interface{}{})
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Can't execute template")
-	}
-
-	return b.String(), nil
+	return nil
 }
