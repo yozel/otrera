@@ -24,11 +24,19 @@ var funcMap map[string]interface{} = template.FuncMap{
 		}
 		r := gjson.Get(string(j), query)
 		if r.Exists() {
-			return r
+			return r.Value()
 		} else {
 			return ""
 		}
 
+	},
+	"json": func(input interface{}) string {
+		j, err := json.Marshal(input)
+		if err != nil {
+			log.Printf("%s\n", err)
+			return ""
+		}
+		return string(j)
 	},
 	"typeof": reflect.TypeOf,
 }

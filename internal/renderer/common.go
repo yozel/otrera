@@ -8,7 +8,7 @@ import (
 type RenderableType string
 
 const (
-	Text       RenderableType = "Text"
+	Static     RenderableType = "Static"
 	GoTemplate                = "GoTemplate"
 )
 
@@ -40,7 +40,7 @@ func (r *Renderable) Render() error {
 	}
 
 	switch r.Type {
-	case Text:
+	case Static:
 		fmt.Print(*r.Content)
 	case GoTemplate:
 		result, err := renderGoTemplate(*r.Content)
