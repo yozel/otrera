@@ -2,6 +2,7 @@ package template
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 	"text/template"
@@ -34,8 +35,8 @@ func New(name, templateString string, s *objectstore.ObjectStore) (*template.Tem
 			}
 			return r, nil
 		},
-		"get": func(key string) (*objectstore.Object, error) {
-			r, err := s.Get(key)
+		"get": func(key string, keyAppend ...string) (*objectstore.Object, error) {
+			r, err := s.Get(fmt.Sprintf("%s%s", key, strings.Join(keyAppend, "")))
 			if err != nil {
 				return nil, err
 			}
