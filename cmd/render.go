@@ -6,10 +6,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/yozel/otrera/internal/renderer"
+	"github.com/yozel/otrera/internal/update"
 )
 
 var (
 	flagRenderers []string
+	flagUpdate    bool
 )
 
 // renderCmd represents the render command
@@ -17,11 +19,9 @@ var renderCmd = &cobra.Command{
 	Use:   "render",
 	Short: "Render a template with AWS data",
 	Run: handleErrors(func(cmd *cobra.Command, args []string) error {
-		// logger := log.Log().With().Logger()
-		// loggerDebug := log.Log().With().
-		// 	Str("cobra cmd", "render").
-		// 	Str("flagPrependFilePath", flagPrependFilePath).
-		// 	Str("flagAppendFilePath", flagAppendFilePath).Logger()
+		if flagUpdate {
+			update.Update()
+		}
 
 		for _, r := range flagRenderers {
 			parts := strings.SplitN(r, ":", 3)
@@ -59,6 +59,7 @@ var renderCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(renderCmd)
+	renderCmd.PersistentFlags().BoolVar(&flagUpdate, "update", false, "Update before render")
 	renderCmd.PersistentFlags().StringArrayVarP(&flagRenderers, "renderer", "r", []string{}, "")
 	renderCmd.MarkPersistentFlagRequired("renderer")
 }
