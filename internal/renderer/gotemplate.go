@@ -2,10 +2,12 @@ package renderer
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/yozel/otrera/internal/gatherer"
 	"github.com/yozel/otrera/internal/gatherer/aws"
 	"github.com/yozel/otrera/internal/log"
 	"github.com/yozel/otrera/internal/objectstore"
@@ -35,14 +37,41 @@ func renderGoTemplate(tmpl string) (string, error) {
 			logger.Info().Str("profile", profile).Msg("Processing profile")
 			options := map[string]string{"profile": profile, "region": "eu-west-1"}
 			labels := map[string]string{"profile": profile, "region": "eu-west-1"}
-			err = s.Gather("AWS/EC2Instances", options, labels, 10*time.Minute)
+
+			g, err := gatherer.New(
+				"/tmp/.otrera.cache",
+				map[string]func(options map[string]string) ([]gatherer.RawObjectInterface, error){
+					"AWS/EC2Instances": aws.DescribeEC2Instances,
+					"AWS/EC2Images":    aws.DescribeEC2Images,
+				})
 			if err != nil {
 				panic(err)
 			}
-			err = s.Gather("AWS/EC2Images", options, labels, 10*time.Minute)
-			if err != nil {
+
+			populateObjectStore := func(key string, o map[string]string, l map[string]string) error {
+				g.UpdateCache(key, o)
+				c, err := g.Gather(key, o)
+				if err != nil {
+					return err // TODO: wrap error
+				}
+				for _, object := range c {
+					s.Set(
+						fmt.Sprintf("%s/%s", key, object.Name()),
+						l,
+						time.Now().UTC(),
+						object.Content(),
+					)
+				}
+				return nil
+			}
+
+			if err = populateObjectStore("AWS/EC2Instances", options, labels); err != nil {
 				panic(err)
 			}
+			if err = populateObjectStore("AWS/EC2Images", options, labels); err != nil {
+				panic(err)
+			}
+
 			logger.Info().Str("profile", profile).Msg("Done processing profile")
 		}(profile)
 	}

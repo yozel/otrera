@@ -1,7 +1,6 @@
 package objectstore
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -9,7 +8,6 @@ import (
 	"time"
 
 	"github.com/yozel/otrera/internal/gatherer"
-	"github.com/yozel/otrera/internal/gatherer/aws"
 )
 
 type ObjectStore struct {
@@ -24,13 +22,7 @@ func NewObjectStore() (*ObjectStore, error) {
 		return nil, err // TODO: wrap error
 	}
 	return &ObjectStore{
-		store: make(map[string]Object),
-		gatherer: gatherer.New(
-			"/tmp/.otrera.cache",
-			map[string]func(options map[string]string) ([]gatherer.RawObjectInterface, error){
-				"AWS/EC2Instances": aws.DescribeEC2Instances,
-				"AWS/EC2Images":    aws.DescribeEC2Images,
-			}), // TODO: get this from parameter
+		store:     make(map[string]Object),
 		storeLock: sync.RWMutex{},
 	}, nil
 }
@@ -106,20 +98,4 @@ eachobject:
 
 	}
 	return r, nil
-}
-
-func (s *ObjectStore) Gather(key string, o map[string]string, l map[string]string, ttl time.Duration) error {
-	c, err := s.gatherer.Gather(key, o, ttl)
-	if err != nil {
-		return err // TODO: wrap error
-	}
-	for _, object := range c {
-		s.Set(
-			fmt.Sprintf("%s/%s", key, object.Name()),
-			l,
-			time.Now().UTC(),
-			object.Content(),
-		)
-	}
-	return nil
 }

@@ -11,7 +11,6 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -42,7 +41,7 @@ func (g *Gatherer) getCachePath(cacheKey string, options map[string]string) stri
 	return path.Join(g.cachePath, key)
 }
 
-func (g *Gatherer) setCache(cacheFilePath string, objects []RawObjectInterface, ttl time.Duration) error {
+func (g *Gatherer) setCache(cacheFilePath string, objects []RawObjectInterface) error {
 	rawObjects := []RawObject{}
 	for _, obj := range objects {
 		rawObjects = append(rawObjects, obj.Copy())
@@ -51,7 +50,7 @@ func (g *Gatherer) setCache(cacheFilePath string, objects []RawObjectInterface, 
 	if err != nil {
 		return err // TODO: wrap error
 	}
-	err = ioutil.WriteFile(fmt.Sprintf("%s-%d", cacheFilePath, time.Now().Unix()+int64(ttl.Seconds())), b, 0644)
+	err = ioutil.WriteFile(fmt.Sprintf("%s-%d", cacheFilePath, time.Now().Unix()), b, 0644)
 	if err != nil {
 		return err // TODO: wrap error
 	}
@@ -70,17 +69,6 @@ func (g *Gatherer) getCache(cacheFilePath string) ([]RawObject, error) {
 	sort.Strings(files)
 	cacheFilePath = files[len(files)-1]
 
-	cs := strings.Split(cacheFilePath, "-")
-
-	timestamp, err := strconv.Atoi(cs[len(cs)-1])
-	if err != nil {
-		return nil, err // TODO: wrap error
-	}
-
-	if int64(timestamp) < time.Now().Unix() {
-		return nil, nil
-	}
-
 	b, err := ioutil.ReadFile(cacheFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -97,13 +85,13 @@ func (g *Gatherer) getCache(cacheFilePath string) ([]RawObject, error) {
 	return d, nil
 }
 
-func (g *Gatherer) UpdateCache(key string, options map[string]string, ttl time.Duration) error {
+func (g *Gatherer) UpdateCache(key string, options map[string]string) error {
 	cp := g.getCachePath(key, options)
 	r, err := g.descriptors[key](options)
 	if err != nil {
 		return err // TODO: wrap error
 	}
-	err = g.setCache(cp, r, ttl)
+	err = g.setCache(cp, r)
 	if err != nil {
 		return err // TODO: wrap error
 	}
@@ -111,14 +99,14 @@ func (g *Gatherer) UpdateCache(key string, options map[string]string, ttl time.D
 }
 
 // Gather returns Description for given name and options with cache
-func (g *Gatherer) Gather(key string, options map[string]string, ttl time.Duration) ([]RawObject, error) {
+func (g *Gatherer) Gather(key string, options map[string]string) ([]RawObject, error) {
 	cp := g.getCachePath(key, options)
 	r, err := g.getCache(cp)
 	if err != nil {
 		return nil, err // TODO: wrap error
 	}
 	if r == nil {
-		err = g.UpdateCache(key, options, ttl)
+		err = g.UpdateCache(key, options)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -135,10 +123,14 @@ func (g *Gatherer) Gather(key string, options map[string]string, ttl time.Durati
 }
 
 // New creates a new Gatherer
-func New(cachePath string, descriptors map[string]func(options map[string]string) ([]RawObjectInterface, error)) *Gatherer {
+func New(cachePath string, descriptors map[string]func(options map[string]string) ([]RawObjectInterface, error)) (*Gatherer, error) {
+	err := os.MkdirAll(cachePath, 0755)
+	if err != nil {
+		return nil, err // TODO: wrap error
+	}
 	g := &Gatherer{
 		cachePath:   cachePath,
 		descriptors: descriptors,
 	}
-	return g
+	return g, nil
 }
