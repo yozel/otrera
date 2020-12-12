@@ -8,36 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/pkg/errors"
-	"github.com/yozel/otrera/internal/gatherer"
-	"gopkg.in/ini.v1"
+	"github.com/yozel/otrera/internal/types"
 )
-
-func ListProfiles(filename string) ([]string, error) {
-	var r []string
-	cfg, err := ini.Load(filename)
-	err = errors.Wrapf(err, "Failed to read file")
-	if err != nil {
-		return nil, err
-	}
-	sections := cfg.Sections()
-	for _, section := range sections {
-		var pn string
-		sn := section.Name()
-		if sn == "DEFAULT" {
-			continue
-		} else if sn == "default" {
-			pn = sn
-		} else {
-			if sn[0:8] != "profile " {
-				log.Printf("Can't parse section: %s\n", sn)
-				continue
-			}
-			pn = sn[8:]
-		}
-		r = append(r, pn)
-	}
-	return r, nil
-}
 
 func getInstanceDetails(profile, region string) ([]*ec2.Instance, error) {
 	sess, err := session.NewSessionWithOptions(
@@ -92,11 +64,11 @@ func (e *EC2InstanceObject) Content() interface{} {
 	return *e.ec2instance
 }
 
-func (e *EC2InstanceObject) Copy() gatherer.RawObject {
-	return gatherer.RawObject{IName: e.Name(), IContent: e.Content()}
+func (e *EC2InstanceObject) Copy() types.RawObject {
+	return types.RawObject{IName: e.Name(), IContent: e.Content()}
 }
 
-func DescribeEC2Instances(options map[string]string) ([]gatherer.RawObjectInterface, error) {
+func DescribeEC2Instances(options map[string]string) ([]types.RawObjectInterface, error) {
 	profile := options["profile"]
 	region := options["region"]
 	instances, err := getInstanceDetails(profile, region)
@@ -104,7 +76,7 @@ func DescribeEC2Instances(options map[string]string) ([]gatherer.RawObjectInterf
 	if err != nil {
 		return nil, err
 	}
-	result := []gatherer.RawObjectInterface{}
+	result := []types.RawObjectInterface{}
 	for _, instance := range instances {
 		result = append(result, &EC2InstanceObject{instance})
 	}

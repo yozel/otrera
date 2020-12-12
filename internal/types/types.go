@@ -1,4 +1,4 @@
-package gatherer
+package types
 
 type RawObjectInterface interface {
 	Name() string

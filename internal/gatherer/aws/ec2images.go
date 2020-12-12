@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/pkg/errors"
-	"github.com/yozel/otrera/internal/gatherer"
+	"github.com/yozel/otrera/internal/types"
 )
 
 type EC2ImageObject struct {
@@ -24,8 +24,8 @@ func (e *EC2ImageObject) Content() interface{} {
 	return *e.ec2instance
 }
 
-func (e *EC2ImageObject) Copy() gatherer.RawObject {
-	return gatherer.RawObject{IName: e.Name(), IContent: e.Content()}
+func (e *EC2ImageObject) Copy() types.RawObject {
+	return types.RawObject{IName: e.Name(), IContent: e.Content()}
 }
 
 func getImageDetails(profile, region string) ([]*ec2.Image, error) {
@@ -58,7 +58,7 @@ func getImageDetails(profile, region string) ([]*ec2.Image, error) {
 	return output.Images, nil
 }
 
-func DescribeEC2Images(options map[string]string) ([]gatherer.RawObjectInterface, error) {
+func DescribeEC2Images(options map[string]string) ([]types.RawObjectInterface, error) {
 	profile := options["profile"]
 	region := options["region"]
 	images, err := getImageDetails(profile, region)
@@ -66,7 +66,7 @@ func DescribeEC2Images(options map[string]string) ([]gatherer.RawObjectInterface
 	if err != nil {
 		return nil, err
 	}
-	result := []gatherer.RawObjectInterface{}
+	result := []types.RawObjectInterface{}
 	for _, image := range images {
 		result = append(result, &EC2ImageObject{image})
 	}
