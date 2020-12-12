@@ -29,6 +29,7 @@ func NewObjectStore() (*ObjectStore, error) {
 			"/tmp/.otrera.cache",
 			map[string]func(options map[string]string) ([]gatherer.RawObjectInterface, error){
 				"AWS/EC2Instances": aws.DescribeEC2Instances,
+				"AWS/EC2Images":    aws.DescribeEC2Images,
 			}), // TODO: get this from parameter
 		storeLock: sync.RWMutex{},
 	}, nil

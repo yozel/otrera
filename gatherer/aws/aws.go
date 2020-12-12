@@ -64,6 +64,9 @@ func getInstanceDetails(profile, region string) ([]*ec2.Instance, error) {
 		func(page *ec2.DescribeInstancesOutput, lastPage bool) bool {
 			for _, reservation := range page.Reservations {
 				for _, instance := range reservation.Instances {
+					if *instance.State.Name == "terminated" {
+						continue
+					}
 					r = append(r, instance)
 				}
 			}

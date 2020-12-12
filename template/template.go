@@ -26,7 +26,7 @@ var funcMap map[string]interface{} = template.FuncMap{
 		if r.Exists() {
 			return r
 		} else {
-			return nil
+			return ""
 		}
 
 	},

@@ -87,6 +87,10 @@ var renderCmd = &cobra.Command{
 				if err != nil {
 					panic(err)
 				}
+				err = s.Gather("AWS/EC2Images", options, labels, 10*time.Minute)
+				if err != nil {
+					panic(err)
+				}
 				logger.Info().Str("profile", profile).Msg("Done processing profile")
 				loggerDebug.Debug().Str("profile", profile).Msg("Done processing profile")
 			}(profile)

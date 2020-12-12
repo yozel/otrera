@@ -1,12 +1,18 @@
 #### START OF THE TEMPLATE ####
-{{ range $object := getall "AWS/EC2Instances/*" }}
-{{- with $object.Data }}
-{{- if .PrivateIpAddress }}
-Host {{ $object.Labels.profile }}_{{ .Tags | gjson "#(Key==\"Name\").Value" }}_{{ .PrivateIpAddress | replace "." "-" }}
-	Hostname {{ .PrivateIpAddress }}
-	{{ if .KeyName }}IdentityFile ~/.ssh/subdir/{{ .KeyName }}.pem{{ end }}
-	# ImageId: {{ .ImageId }}
-{{ end -}}
-{{ end -}}
+{{- range $instance := getall "AWS/EC2Instances/*" -}}
+{{ $User := (get "AWS/EC2Images/" $instance.Data.ImageId) | gjson "Data.Tags.#(Key==\"SSHUser\").Value" }}
+{{ $InstanceName := $instance.Data.Tags | gjson "#(Key==\"Name\").Value" }}
+{{ $IpAddress := or $instance.Data.PrivateIpAddress $instance.Data.PublicIpAddress }}
+
+{{- /*  Begin SSH Config Template */ -}}
+
+Host {{ $instance.Labels.profile }}_{{ $InstanceName }}_{{ $IpAddress | replace "." "-" }}
+	Hostname {{ $IpAddress }}
+	{{ if $instance.Data.KeyName }}IdentityFile ~/.ssh/{{ $instance.Data.KeyName }}.pem{{ end }}
+	{{ if $User }}User {{ $User }}{{ end }}
+
+{{- /*  End SSH Config Template */ -}}
+
 {{ end }}
+
 #### END OF THE TEMPLATE ####
