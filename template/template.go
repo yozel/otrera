@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 	"text/template"
 
@@ -15,14 +16,21 @@ var funcMap map[string]interface{} = template.FuncMap{
 	"replace": func(find, replace, input string) string {
 		return strings.Replace(input, find, replace, -1)
 	},
-	"gjson": func(query string, input []interface{}) interface{} {
+	"gjson": func(query string, input interface{}) interface{} {
 		j, err := json.Marshal(input)
 		if err != nil {
 			log.Printf("%s\n", err)
 			return ""
 		}
-		return gjson.Get(string(j), query)
+		r := gjson.Get(string(j), query)
+		if r.Exists() {
+			return r
+		} else {
+			return nil
+		}
+
 	},
+	"typeof": reflect.TypeOf,
 }
 
 // New creates a new template with given templateString
@@ -40,7 +48,7 @@ func New(name, templateString string, s *objectstore.ObjectStore) (*template.Tem
 			if err != nil {
 				return nil, err
 			}
-			return &r, nil
+			return r, nil
 		},
 	}
 

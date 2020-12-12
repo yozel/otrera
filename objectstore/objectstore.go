@@ -59,10 +59,13 @@ func (s *ObjectStore) Set(key string, l map[string]string, c time.Time, d interf
 	return nil
 }
 
-func (s *ObjectStore) Get(key string) (Object, error) {
+func (s *ObjectStore) Get(key string) (*Object, error) {
 	s.storeLock.RLock()
 	defer s.storeLock.RUnlock()
-	return s.store[key], nil
+	if o, ok := s.store[key]; ok {
+		return &o, nil
+	}
+	return nil, nil
 }
 
 func (s *ObjectStore) GetAll(key string, l map[string]string) ([]Object, error) {

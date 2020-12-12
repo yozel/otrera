@@ -13,7 +13,7 @@ import (
 func handleErrors(f func(cmd *cobra.Command, args []string) error) func(cmd *cobra.Command, args []string) {
 	return func(cmd *cobra.Command, args []string) {
 		if err := f(cmd, args); err != nil {
-			log.Log().Fatal().Err(err).Msg(err.Error())
+			log.Log().Fatal().Err(err).Send()
 		}
 	}
 }

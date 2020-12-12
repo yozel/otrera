@@ -98,7 +98,7 @@ var renderCmd = &cobra.Command{
 		template, err := template.New("hostTemplateString", string(hostTemplateString), s)
 		err = errors.Wrapf(err, "Can't parse hostTemplateString")
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		var b bytes.Buffer
